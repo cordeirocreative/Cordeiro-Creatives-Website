@@ -54,6 +54,11 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
 if (reduceMotion) {
   document.querySelectorAll('.reveal').forEach(el => el.classList.add('visible'));
 } else {
+  document.querySelectorAll('.reveal').forEach(el => {
+    const siblings = Array.from(el.parentElement.children).filter(c => c.classList.contains('reveal'));
+    el.style.setProperty('--delay', `${siblings.indexOf(el) * 0.12}s`);
+  });
+
   const observer = new IntersectionObserver(
     entries => entries.forEach(entry => {
       if (entry.isIntersecting) {
@@ -66,6 +71,58 @@ if (reduceMotion) {
 
   document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 }
+
+/* ---------------- Active nav link ---------------- */
+
+const navLinks = Array.from(document.querySelectorAll('.nav-links a[href^="#"]'));
+
+const sectionObserver = new IntersectionObserver(
+  entries => entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    navLinks.forEach(a => a.classList.toggle('is-active', a.getAttribute('href') === `#${entry.target.id}`));
+  }),
+  { rootMargin: '-45% 0px -50% 0px' }
+);
+
+navLinks.forEach(a => {
+  const target = document.getElementById(a.getAttribute('href').slice(1));
+  if (target) sectionObserver.observe(target);
+});
+
+/* ---------------- Depth on scroll ---------------- */
+
+const root = document.documentElement;
+const water = document.querySelector('.water');
+const DIM = [143, 169, 210];
+const BRIGHT = [255, 255, 255];
+
+function updateDepth() {
+  const scrollY = window.scrollY;
+  const max = Math.max(root.scrollHeight - window.innerHeight, 1);
+  const depth = Math.min(Math.max(scrollY / max, 0), 1);
+  root.style.setProperty('--depth', depth.toFixed(4));
+  const ink = DIM.map((c, i) => Math.round(c + (BRIGHT[i] - c) * depth));
+  root.style.setProperty('--text', `rgb(${ink.join(', ')})`);
+  water.style.transform = `translateY(${-scrollY * 0.25}px)`;
+}
+
+function sizeWater() {
+  water.style.height = `${root.scrollHeight}px`;
+  updateDepth();
+}
+
+window.addEventListener('scroll', updateDepth, { passive: true });
+window.addEventListener('resize', sizeWater);
+sizeWater();
+
+const accentObserver = new IntersectionObserver(
+  entries => entries.forEach(entry => {
+    if (entry.isIntersecting) root.style.setProperty('--accent', entry.target.dataset.accent);
+  }),
+  { rootMargin: '-45% 0px -50% 0px' }
+);
+
+document.querySelectorAll('section[data-accent]').forEach(s => accentObserver.observe(s));
 
 /* ---------------- Footer year ---------------- */
 
